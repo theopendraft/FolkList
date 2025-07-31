@@ -1,29 +1,32 @@
-// frontend/src/components/UserEventModal.jsx
 import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 
 const UserEventModal = ({ isOpen, onClose, onSave, event }) => {
   const [title, setTitle] = useState('');
-  // The event prop will contain the date for a new event,
-  // or the full event object if we are editing.
-  const eventDate = event ? new Date(event.date || event.start).toISOString().split('T')[0] : '';
+  const [date, setDate] = useState(''); // New state for the date
 
   useEffect(() => {
-    // If we are editing an existing event, populate the title
-    setTitle(event?.title || '');
-  }, [event]);
+    // If an event is passed, we are editing it.
+    if (event) {
+      setTitle(event.title || '');
+      // Format the date correctly for the input field (YYYY-MM-DD)
+      const eventDate = event.date ? new Date(event.date) : new Date();
+      setDate(eventDate.toISOString().split('T')[0]);
+    } else {
+      // If no event, we are creating one. Default to today's date.
+      setTitle('');
+      setDate(new Date().toISOString().split('T')[0]);
+    }
+  }, [event, isOpen]); // Rerun when the modal opens or the event changes
 
   const handleSave = () => {
-    // Basic validation
-    if (!title) {
-      alert('Please enter a title.');
+    if (!title || !date) {
+      alert('Please enter a title and select a date.');
       return;
     }
-    onSave({
-      title: title,
-      date: eventDate,
-    });
-    onClose(); // Close the modal after saving
+    // Pass the ID if we are editing, otherwise it's a new event
+    onSave({ id: event?.id, title, date });
+    onClose();
   };
 
   return (
@@ -34,7 +37,7 @@ const UserEventModal = ({ isOpen, onClose, onSave, event }) => {
       className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4 outline-none z-50 text-gray-800"
     >
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        {event?.title ? 'Edit Event' : 'Add New Event'}
+        {event?.id ? 'Edit Event' : 'Add New Event'}
       </h2>
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">
@@ -56,9 +59,10 @@ const UserEventModal = ({ isOpen, onClose, onSave, event }) => {
         <input
           type="date"
           id="date"
-          value={eventDate}
-          disabled // Date is set by clicking on the calendar, so we disable editing here
-          className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm"
+          value={date}
+          // The input is no longer disabled
+          onChange={(e) => setDate(e.target.value)}
+          className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500"
         />
       </div>
       <div className="mt-6 flex justify-end space-x-3">
