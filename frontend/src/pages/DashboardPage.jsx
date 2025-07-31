@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
 
-const DashboardPage = () => {
+import DashboardDetailModal from '../ui/DashboardDetailModal';
+
+const DashboardPage = ({ searchTerm }) => {
   const { token, logout } = useAuth();
   const [allEvents, setAllEvents] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [editingEvent, setEditingEvent] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'ascending' });
 
+
+  
   const secureApi = useMemo(() => {
     return axios.create({
       baseURL: 'http://127.0.0.1:8000',
@@ -36,8 +39,18 @@ const DashboardPage = () => {
     }
   }, [year, token, secureApi, logout]);
 
+  const filteredEvents = useMemo(() => {
+    if (!searchTerm) {
+      return allEvents;
+    }
+    return allEvents.filter(event =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allEvents, searchTerm]);
+
+
   const sortedEvents = useMemo(() => {
-    let sortableEvents = [...allEvents];
+let sortableEvents = [...filteredEvents];
     if (sortConfig !== null) {
       sortableEvents.sort((a, b) => {
         let aValue = sortConfig.key === 'date' ? new Date(a.date) : a.title;
@@ -48,7 +61,7 @@ const DashboardPage = () => {
       });
     }
     return sortableEvents;
-  }, [allEvents, sortConfig]);
+  }, [filteredEvents, sortConfig]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -87,7 +100,7 @@ const DashboardPage = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen w-screen">
-      <Navbar />
+
       <main className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold text-gray-800">Events Dashboard</h1>

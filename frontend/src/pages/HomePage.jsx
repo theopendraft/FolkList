@@ -15,7 +15,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 Modal.setAppElement('#root');
 const localizer = momentLocalizer(moment);
 
-const HomePage = () => {
+const HomePage = ({ searchTerm }) => {
   const { token, logout } = useAuth();
   const [allEvents, setAllEvents] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -51,6 +51,23 @@ const HomePage = () => {
       fetchData();
     }
   }, [year, token, secureApi, logout]);
+
+  // --- New logic to filter events based on the search term ---
+  const filteredEvents = useMemo(() => {
+    if (!searchTerm) {
+      return allEvents;
+    }
+    return allEvents.filter(event =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allEvents, searchTerm]);
+
+  // --- New effect to jump to the date of the first search result ---
+  useEffect(() => {
+    if (searchTerm && filteredEvents.length > 0) {
+      setDate(new Date(filteredEvents[0].start)); // Navigate calendar to the first result
+    }
+  }, [searchTerm, filteredEvents]);
 
   // --- THIS FUNCTION IS NOW CORRECTED ---
   const handleSaveFestival = async (festivalData) => {
@@ -125,8 +142,8 @@ const HomePage = () => {
   const handleNavigate = (newDate) => { setDate(newDate); if (newDate.getFullYear() !== year) { setYear(newDate.getFullYear()) } };
 
   return (
-    <div className=" min-h-screen w-screen overflow-y-auto overflow-x-hidden top-0 right-0 left-0 outline-none focus:outline-none bg-gray-100 font-sans">
-      <Navbar />  
+    <div className=" min-h-full w-full overflow-y-auto overflow-x-hidden top-0 right-0 left-0 outline-none focus:outline-none bg-gray-100 font-sans">
+  
       <main className="flex-grow p-4 md:p-4  font-sans bg-gray-100 max-w-7xl mx-auto">
         {" "}
         <div className=" mb-2 gap-2 w-full flex justify-between items-center ">
@@ -140,7 +157,7 @@ const HomePage = () => {
             onClick={() => setUserEventModal({ isOpen: true, event: null })}
             className="px-4 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 shadow ml-2 w-1/2 z"
           >
-            Add Event
+            Add Task
           </button>
         </div>
         <div className="h-[85vh] bg-white p-4 rounded-lg shadow-md text-gray-700">
