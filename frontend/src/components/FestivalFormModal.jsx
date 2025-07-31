@@ -89,7 +89,7 @@ const FestivalFormModal = ({ isOpen, onClose, onSave, event }) => {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Summary (Optional)</label>
+          <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
           <textarea name="summary" value={formData.summary || ''} onChange={handleChange} rows="3" className="mt-1 w-full form-input text-gray-600"></textarea>
         </div>
         <div>
