@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const AuthContext = createContext();
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: 'https://folklist-api.onrender.com',
 });
 
 export const AuthProvider = ({ children }) => {

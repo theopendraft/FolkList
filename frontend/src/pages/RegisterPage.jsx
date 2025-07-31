@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://127.0.0.1:8000' });
+const api = axios.create({ baseURL: 'https://folklist-api.onrender.com' });
 
 // An SVG icon for the password visibility toggle
 const EyeIcon = ({ isVisible }) => (
