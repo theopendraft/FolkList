@@ -13,6 +13,7 @@ class Festival(Base):
     location = Column(String)
     type = Column(String)
     summary = Column(String)
+    accurate_date = Column(Date, nullable=True)
     hook_intro = Column(String)
     time = Column(String, nullable=True)
     latitude = Column(String, nullable=True)

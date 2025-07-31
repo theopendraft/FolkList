@@ -86,24 +86,26 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
+# --- FESTIVAL ENDPOINTS (Corrected Logic) ---
+
 @app.get("/festivals/{year}", response_model=List[schemas.Festival])
 def get_festivals_for_year(year: int, db: Session = Depends(get_db)):
     festivals_from_db = db.query(models.Festival).all()
-    year_holidays = holidays.country_holidays('IN', years=year)
-    response_festivals = []
+    # Logic is now simplified: read the stored date and just change the year.
     for festival in festivals_from_db:
-        festival.accurate_date = date_engine.get_festival_date(festival, year, year_holidays)
-        response_festivals.append(festival)
-    return response_festivals
+        if festival.accurate_date:
+            try:
+                festival.accurate_date = festival.accurate_date.replace(year=year)
+            except ValueError: # Handles leap years (e.g., Feb 29)
+                festival.accurate_date = festival.accurate_date.replace(year=year, day=28)
+    return festivals_from_db
 
-# --- THIS IS THE FINAL, CORRECTED VERSION OF THE FUNCTION ---
 @app.post("/festivals/", response_model=schemas.Festival)
 def create_festival(festival: schemas.FestivalCreate, db: Session = Depends(get_db)):
     existing_festival = db.query(models.Festival).filter(models.Festival.event_name == festival.event_name).first()
     if existing_festival:
         raise HTTPException(status_code=400, detail="A festival with this name already exists.")
     
-    # Manually and safely create the database object
     db_festival = models.Festival(
         event_name=festival.event_name,
         location=festival.location,
@@ -111,36 +113,31 @@ def create_festival(festival: schemas.FestivalCreate, db: Session = Depends(get_
         summary=festival.summary,
         hook_intro=festival.hook_intro,
         time=festival.time,
-        # Derive these fields from the accurate_date
         month=festival.accurate_date.strftime("%b"),
         general_date=festival.accurate_date.strftime("%b %d"),
+        accurate_date=festival.accurate_date # Save the date permanently
     )
     db.add(db_festival)
     db.commit()
     db.refresh(db_festival)
-    # Add the date back for the response model
-    db_festival.accurate_date = festival.accurate_date
     return db_festival
 
-# --- All other endpoints remain the same ---
 @app.put("/festivals/{festival_id}", response_model=schemas.Festival)
 def update_festival(festival_id: int, festival_update: schemas.FestivalUpdate, db: Session = Depends(get_db)):
     db_festival = db.query(models.Festival).filter(models.Festival.id == festival_id).first()
     if not db_festival:
         raise HTTPException(status_code=404, detail="Festival not found")
+    
     update_data = festival_update.dict(exclude_unset=True)
     for key, value in update_data.items():
+        setattr(db_festival, key, value)
+        # If the date is updated, also update the derived helper columns
         if key == "accurate_date" and value:
             db_festival.month = value.strftime("%b")
             db_festival.general_date = value.strftime("%b %d")
-        setattr(db_festival, key, value)
+
     db.commit()
     db.refresh(db_festival)
-    year = py_date.today().year
-    year_holidays = holidays.country_holidays('IN', years=year)
-    db_festival.accurate_date = db_festival.accurate_date or date_engine.get_festival_date(db_festival, year, year_holidays)
-    if festival_update.accurate_date:
-         db_festival.accurate_date = festival_update.accurate_date
     return db_festival
 
 @app.delete("/festivals/{festival_id}", response_model=schemas.Festival)
@@ -151,6 +148,8 @@ def delete_festival(festival_id: int, db: Session = Depends(get_db)):
     db.delete(db_festival)
     db.commit()
     return db_festival
+
+# --- USER EVENT ENDPOINTS (Unchanged) ---
 
 @app.post("/events/", response_model=schemas.UserEvent)
 def create_user_event(event: schemas.UserEventCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
