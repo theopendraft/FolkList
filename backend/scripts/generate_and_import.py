@@ -54,33 +54,72 @@ Theyyam,Dec,Dec–Apr,Kerala,Ritual Dance,Possession fire dance,Mythology reels,
 """
 
 def main():
-    # Re-create the database every time for a fresh start
-    Base.metadata.drop_all(bind=engine)
+    db_path = os.path.join(os.path.dirname(__file__), '..', 'folk_cal.db')
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
     Base.metadata.create_all(bind=engine)
-    
     db = SessionLocal()
-    
-    # Use pandas to read the string as if it were a file
     df = pd.read_csv(StringIO(csv_data))
-    
+
+    # --- New, hyper-accurate coordinate data structure ---
+    # Each entry is a list, allowing for multiple locations.
+    coords = {
+        "Jallikattu": [{"name": "Alanganallur", "lat": "10.0664", "lon": "78.0931"}],
+        "Rann Utsav": [{"name": "Dhordo Tent City", "lat": "23.8569", "lon": "69.4972"}],
+        "Apricot & Snow Blossom": [{"name": "Dha-Hanu Valley", "lat": "34.6625", "lon": "76.4172"}, {"name": "Garkone Village", "lat": "34.7211", "lon": "76.2736"}],
+        "Shakrain Kite Festival": [{"name": "Murshidabad", "lat": "24.1832", "lon": "88.2721"}],
+        "Bhoota Kola": [{"name": "Udupi", "lat": "13.3409", "lon": "74.7421"}],
+        "Bhagoria Haat": [{"name": "Jhabua", "lat": "22.7719", "lon": "74.5959"}],
+        "Khajuraho Dance Fest": [{"name": "Khajuraho Temples", "lat": "24.8529", "lon": "79.9221"}],
+        "Lathmar Holi": [{"name": "Barsana", "lat": "27.6503", "lon": "77.3824"}, {"name": "Nandgaon", "lat": "27.7121", "lon": "77.3857"}],
+        "Kumaon Holi": [{"name": "Almora", "lat": "29.5937", "lon": "79.6583"}],
+        "Mewar Holika Dahan": [{"name": "City Palace, Udaipur", "lat": "24.5762", "lon": "73.6835"}],
+        "Padayani": [{"name": "Kadammanitta Devi Temple", "lat": "9.2933", "lon": "76.8188"}],
+        "Tulip Garden": [{"name": "Indira Gandhi Tulip Garden, Srinagar", "lat": "34.0833", "lon": "74.8329"}],
+        "Gangaur": [{"name": "Jaipur", "lat": "26.9124", "lon": "75.7873"}, {"name": "Udaipur", "lat": "24.5854", "lon": "73.7125"}],
+        "Chithirai Fest": [{"name": "Meenakshi Temple, Madurai", "lat": "9.9195", "lon": "78.1196"}],
+        "Vesak/Buddha Purnima (Sanchi, Bodhgaya)": [{"name": "Bodh Gaya", "lat": "24.6958", "lon": "84.9912"}, {"name": "Sanchi", "lat": "23.4883", "lon": "77.7388"}],
+        "Valley of Flowers Opens": [{"name": "Valley of Flowers National Park", "lat": "30.7269", "lon": "79.6053"}],
+        "Moatsu Mong": [{"name": "Mokokchung", "lat": "26.3275", "lon": "94.5152"}],
+        "Ambubachi Mela": [{"name": "Kamakhya Temple, Guwahati", "lat": "26.1663", "lon": "91.7058"}],
+        "Wari Pilgrimage (Palkhi Yatra)": [{"name": "Pandharpur", "lat": "17.6743", "lon": "75.3314"}],
+        "Nag Panchami": [{"name": "Nagpur", "lat": "21.1458", "lon": "79.0882"}],
+        "Teej Festival": [{"name": "Jaipur", "lat": "26.9124", "lon": "75.7873"}],
+        "Bathukamma": [{"name": "Hyderabad", "lat": "17.3850", "lon": "78.4867"}],
+        "Ziro Music Fest": [{"name": "Ziro Valley", "lat": "27.6333", "lon": "93.8333"}],
+        "Mysuru Dasara": [{"name": "Mysore Palace", "lat": "12.3051", "lon": "76.6552"}],
+        "Bastar Dussehra": [{"name": "Jagdalpur", "lat": "19.0700", "lon": "82.0300"}],
+        "Navratri (Garba & Golu)": [{"name": "Vadodara", "lat": "22.3072", "lon": "73.1812"}, {"name": "Mylapore, Chennai", "lat": "13.0360", "lon": "80.2691"}],
+        "Chhath Puja": [{"name": "Ganges Ghats, Patna", "lat": "25.6096", "lon": "85.1376"}],
+        "Pushkar Camel Fair": [{"name": "Pushkar", "lat": "26.4899", "lon": "74.5516"}],
+        "Hornbill Festival": [{"name": "Kisama Heritage Village", "lat": "25.6025", "lon": "94.1191"}],
+        "Theyyam": [{"name": "Kannur District", "lat": "11.8745", "lon": "75.3704"}, {"name": "Kasaragod District", "lat": "12.5002", "lon": "74.9896"}]
+    }
+
+    # --- Update the main import logic ---
     try:
         for index, row in df.iterrows():
+            event_name = row["Event/Festival"]
+            # We need to serialize the list of coordinates into a string to store in the DB
+            locations_list = coords.get(event_name, [])
+
+            # For simplicity in the DB, we'll store lat/lon of the first location.
+            # A more complex setup might use a separate table for locations.
+            lat = locations_list[0]['lat'] if locations_list else None
+            lon = locations_list[0]['lon'] if locations_list else None
+
             festival_obj = Festival(
-                event_name=row["Event/Festival"],
-                month=row["Month"],
-                general_date=row["Date"],
-                location=row["Location"],
-                type=row["Type"],
-                summary=row["Experience Summary"],
-                content_potential=row["Content Potential"],
-                hook_intro=row["🎬 Hook/Intro Line"],
-                voiceover_prompt=row["🎙️ Voiceover Prompt"],
-                ideal_titles=row["🎯 Ideal Titles"]
+                event_name=event_name, month=row["Month"], general_date=row["Date"],
+                location=row["Location"], type=row["Type"], summary=row["Experience Summary"],
+                content_potential=row["Content Potential"], hook_intro=row["🎬 Hook/Intro Line"],
+                voiceover_prompt=row["🎙️ Voiceover Prompt"], ideal_titles=row["🎯 Ideal Titles"],
+                latitude=lat, longitude=lon
             )
             db.add(festival_obj)
-        
+
         db.commit()
-        print("✅ Database created and populated successfully!")
+        print("✅ Database created and populated with HYPER-ACCURATE coordinate data!")
     except Exception as e:
         db.rollback()
         print(f"❌ An error occurred: {e}")

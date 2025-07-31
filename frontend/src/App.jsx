@@ -112,7 +112,7 @@ const App = () => {
     <div className="p-4 h-screen w-screen bg-gray-100 md:p-8 font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
-          FolkCal {year}
+          FolkList {year}
         </h1>
         <div className="flex space-x-2">
           <button
